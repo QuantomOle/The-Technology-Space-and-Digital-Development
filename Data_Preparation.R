@@ -13,6 +13,8 @@
 library(tidyverse)    # numerous data wrangling packages
 library(data.table)   # quick data loading
 library(lubridate)    # Working with dates
+library(arules)       # Association rules (for network links)
+library(widyr)        # Super fast functions for long to wide operations
 
 # Useful commands
 '%!in%' <- function(x,y)!('%in%'(x,y)) # opposite of %in% command
@@ -39,12 +41,16 @@ df <- df %>% filter(year == 2017)
 
 # exclude duplicate ids: there 132 ids that are not unique. I exclude them
 df <- df %>% distinct()
+
 # Still duplicates remaining
-test <- as.data.frame(table(df$id))
-ids_duplicate <- test %>% filter(Freq > 1) %>% select(Var1)
+ids_duplicate <- as.data.frame(table(df$id)) %>% filter(Freq > 1) %>% select(Var1)
 df <- df %>% filter(id %!in% ids_duplicate$Var1)
 
+
+####################################
 #### Extract and manipulate tags ###
+####################################
+
 # transform tags from string into list of individual tags
 df$tags_list <- list(strsplit(df$tags,"\\|"))
 
@@ -61,25 +67,54 @@ df <- data.frame(df)
 df.expanded <- df[rep(row.names(df), df$number_tags),]
 df.expanded$tags <- tags
 
-### Exclude all tags that do not appear in our wikipedia matching table ###
+### Exclude all tags that do not appear in our wikipedia matching table
 
 df_wiki <- fread("/Users/oleteutloff/Desktop/Data/wikipedia_matching/wiki_match.csv")
 df_wiki <- df_wiki %>% filter(Wikipedia != "")
 
 df.expanded <- df.expanded %>% filter(tags %in% df_wiki$tag)
 
-### create adjacency matrix - NOT QUITE WHAT WE ARE DOING ###
 
+############################################
+### Create tag matrix to calculate lift ###
+############################################
+
+# select only necessary columns
 df_matrix <- df.expanded %>% dplyr::select(tags,id) 
-df_matrix$value <- 1
-wrkb_mtrx <- spread(head(df_matrix,100), tags, value, fill = 0) # solve the memory ERROR!
 
-rownames(wrkb_mtrx) <- wrkb_mtrx$id
-wrkb_mtrx <- wrkb_mtrx %>% dplyr::select(-id)
+# delete everything else to free up memory - not strictly necessary
+rm(df,df_wiki,df.expanded, ids_duplicate, tags)
 
+## Counting co-occurance using very promising approach from widyr library - It works super fast! Avoids creating super large sparse matrix
+cooccurance_count <- widyr::pairwise_count(df_matrix, tags, id) # function from library(widyr)
 
+# Counting total occurance of each tag
+single_count <- df_matrix %>% count(tags)
 
+## Merging the two together (twice to have count of item1 and item2)
+single_count <- rename(single_count, tag1_count = n)
+# merge
+cooccurance_count <- cooccurance_count %>% left_join(single_count, by = c("item1" = "tags"))
+# rename for clarity
+single_count <- rename(single_count, tag2_count = tag1_count)
+# merge again to have also count for item 2 
+cooccurance_count <- cooccurance_count %>% left_join(single_count, by = c("item2" = "tags"))
 
+# Adding total number of observations
+cooccurance_count$total_num_obs <- length(unique(df_matrix$id))
 
+# Renaming remaining columns
+cooccurance_count <- rename(cooccurance_count, tag1 = item1, tag2 = item2, co_occurance_count = n)
+
+# Transform integers to doubles - to avoid integer overflow error that introduces NAs
+cooccurance_count$tag1_count <- as.double(cooccurance_count$tag1_count)
+cooccurance_count$tag2_count <- as.double(cooccurance_count$tag2_count)
+cooccurance_count$total_num_obs <- as.double(cooccurance_count$total_num_obs)
+
+# Calculating lift
+cooccurance_count$lift <- (cooccurance_count$co_occurance_count*cooccurance_count$total_num_obs)/(cooccurance_count$tag1_count*cooccurance_count$tag2_count)
+
+# Adding year variable
+cooccurance_count$year <- 2017
 
 
