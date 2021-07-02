@@ -21,7 +21,7 @@ library(widyr)        # Super fast functions for long to wide operations
 options(stringsAsFactors = FALSE)
 
 #%#%#%#%#%#%#%#%#%#%
-# Load data
+# Load data and simple data cleaning
 #%#%#%#%#%#%#%#%#%#%
 
 # Read the huge data frame using the data.table package
@@ -36,8 +36,8 @@ df <- df %>% dplyr::select(id, creation_date, Country, tags)
 # extract year from date
 df$year <- format(as.Date(df$creation_date),"%Y")
 
-# Limit to 2017 (for now)
-df <- df %>% filter(year == 2017)
+# Limit to 2017 (for now) - Not necessary anymore
+#df <- df %>% filter(year == 2017)
 
 # exclude duplicate ids: there 132 ids that are not unique. I exclude them
 df <- df %>% distinct()
@@ -69,11 +69,24 @@ df.expanded$tags <- tags
 
 ### Exclude all tags that do not appear in our wikipedia matching table
 
-df_wiki <- fread("/Users/oleteutloff/Desktop/Data/wikipedia_matching/wiki_match.csv")
-df_wiki <- df_wiki %>% filter(Wikipedia != "")
+# final solution when wiki-matching is complete
+#df_wiki <- fread("/Users/oleteutloff/Desktop/Data/wikipedia_matching/wiki_match.csv")
+#df_wiki <- df_wiki %>% filter(Wikipedia != "")
 
+# df.expanded <- df.expanded %>% filter(tags %in% df_wiki$tag)
+
+
+# provisional solution - Some how we lose 47 technology tags
+df_wiki <- fread("/Users/oleteutloff/Desktop/Data/wikipedia_matching/wiki_provisional.csv")
 df.expanded <- df.expanded %>% filter(tags %in% df_wiki$tag)
 
+
+### Extract in which year a technology appeared for the first time
+first_appearance <- df.expanded %>% group_by(tags) %>% summarise(min(year)) %>% rename(year_appeared="min(year)")
+# table(first_appearance$`min(year)`) # number of new tags decreases over time. 
+
+# Save this table for use in the network 
+write.csv(first_appearance,"/Users/oleteutloff/Desktop/Data/tag_first_appearance.csv", row.names = FALSE)
 
 ############################################
 ### Create tag matrix to calculate lift ###
@@ -114,7 +127,17 @@ cooccurance_count$total_num_obs <- as.double(cooccurance_count$total_num_obs)
 # Calculating lift
 cooccurance_count$lift <- (cooccurance_count$co_occurance_count*cooccurance_count$total_num_obs)/(cooccurance_count$tag1_count*cooccurance_count$tag2_count)
 
-# Adding year variable
-cooccurance_count$year <- 2017
+# keep only connections with lift > 1
+cooccurance_count <- cooccurance_count %>% filter(lift > 1)
+
+# removing the duplicates in edge list (because we will build an undirected network)
+no_duplicates <- cooccurance_count[!duplicated(t(apply(cooccurance_count, 1, sort))),]
+
+# Check if there are still all tags
+data_check <- c(no_duplicates$tag1, no_duplicates$tag2)
+length(unique(data_check)) == length(unique(df_matrix$tags))
+
+# Export data to .csv for upload to Github and use to build the technology space network
+write.csv(no_duplicates,"/Users/oleteutloff/Desktop/Data/edge_list.csv", row.names = FALSE)
 
 
