@@ -2,7 +2,7 @@
 #%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%
 # Spatial inequalities
 # 2021-07-02
-# Build technology space network and prepare visualization
+# Build technology space network
 # Ole Teutloff
 #%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%
 #%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%
@@ -29,47 +29,29 @@ options(stringsAsFactors = FALSE)
 # Load data directly from github
 #%#%#%#%#%#%#%#%#%#%
 
-node_info <- read.csv("https://raw.githubusercontent.com/QuantomOle/The-Technology-Space-and-Digital-Development/main/data/tag_first_appearance.csv")
+node_info <- fread("https://raw.githubusercontent.com/QuantomOle/The-Technology-Space-and-Digital-Development/main/data/node_info.csv")
 
-# unclear why this is not working at the moment. Data is not importated correctly. Seems the data structures is changes to different encoding while upload or something like this
-#edge_list <- read.csv("https://raw.githubusercontent.com/QuantomOle/The-Technology-Space-and-Digital-Development/main/data/edge_list.csv", fileEncoding="UTF-16LE")
-
-edge_list <- read.csv("/Users/oleteutloff/Desktop/Data/edge_list.csv")
-
-
-
+edge_list <- fread("https://raw.githubusercontent.com/QuantomOle/The-Technology-Space-and-Digital-Development/main/data/edge_list.csv")
 
 #%#%#%#%#%#%#%#%#%#%
 # Create Network
 #%#%#%#%#%#%#%#%#%#%
 
-# select relevant variables only
-edge_list <- edge_list %>% select(tag1,tag2,lift)
+# Creating dedicated dataframes for nodes and edges including node attributes and optional edge weights
+nodes <- node_info
+edges <- edge_list %>% select(tag1,tag2,co_occurance_count,lift)
 
-# Create network
-coocNet<-network(edge_list,
-                 matrix.type='edgelist',
-                 directed=F,
-                 ignore.eval=FALSE,  # confusingly, this tells it to include edge weights
-                 names.eval=c("lift")  # names for the edge weights
-)
-
-
-#%#%#%#%#%#%#%#%#%#%
-# Add information to the nodes
-#%#%#%#%#%#%#%#%#%#%
-
-
-
-
-
-
-
+# Creating the network
+coocNet <- graph_from_data_frame(d=edges, vertices=nodes, directed=FALSE)
+class(coocNet)
 
 #%#%#%#%#%#%#%#%#%#%
 # Export for use in Gephi
 #%#%#%#%#%#%#%#%#%#%
 
-write_graph(coocNet, "/Users/oleteutloff/Desktop/Data/cooc_network.graphml", format = "graphml")
+# Set your path via setting your working directory (setwd()) or choose any other path where to save the network
+path = paste(getwd(),"/cooc_network.graphml", sep="")
+
+write_graph(coocNet, path, format = "graphml")
 
 
