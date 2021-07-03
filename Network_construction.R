@@ -33,6 +33,23 @@ node_info <- fread("https://raw.githubusercontent.com/QuantomOle/The-Technology-
 
 edge_list <- fread("https://raw.githubusercontent.com/QuantomOle/The-Technology-Space-and-Digital-Development/main/data/edge_list.csv")
 
+
+#%#%#%#%#%#%#%#%#%#%
+# Changing year of appearance form long to wide for easier visualization
+#%#%#%#%#%#%#%#%#%#%
+
+node_info$value <- 1
+node_info$year <- node_info$year_appeared
+
+node_info <- node_info %>% arrange(year) %>% pivot_wider(names_from = year, values_from = value) %>% mutate_at(vars(starts_with("20")), ~replace(., is.na(.), 0))
+
+#%#%#%#%#%#%#%#%#%#%
+# Changing lift threshold for connection
+#%#%#%#%#%#%#%#%#%#%
+
+# We could try a minimum lift of 10 or something derived from the distribution to get a more sparse network and clearer structure
+
+
 #%#%#%#%#%#%#%#%#%#%
 # Create Network
 #%#%#%#%#%#%#%#%#%#%
@@ -44,6 +61,17 @@ edges <- edge_list %>% select(tag1,tag2,co_occurance_count,lift)
 # Creating the network
 coocNet <- graph_from_data_frame(d=edges, vertices=nodes, directed=FALSE)
 class(coocNet)
+
+
+#%#%#%#%#%#%#%#%#%#%
+# Run community detection (Louvain)
+#%#%#%#%#%#%#%#%#%#%
+
+clusterlouvain <- cluster_louvain(coocNet)
+
+# Assign community membership as an attribute
+V(coocNet)$louvain_community <- membership(clusterlouvain)
+
 
 #%#%#%#%#%#%#%#%#%#%
 # Export for use in Gephi
