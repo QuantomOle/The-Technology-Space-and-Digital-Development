@@ -134,11 +134,24 @@ cooccurance_count$tag1_count <- as.double(cooccurance_count$tag1_count)
 cooccurance_count$tag2_count <- as.double(cooccurance_count$tag2_count)
 cooccurance_count$total_num_obs <- as.double(cooccurance_count$total_num_obs)
 
+
+### Proximity ###
+
+# calculate proximity
+cooccurance_count$proximity1 <- cooccurance_count$co_occurance_count / cooccurance_count$tag1_count
+cooccurance_count$proximity2 <- cooccurance_count$co_occurance_count / cooccurance_count$tag2_count
+
+# keeping only the minimum proximity for each pair of tags
+cooccurance_count <- transform(cooccurance_count, proximity = pmin(proximity1, proximity2))
+cooccurance_count <- select(cooccurance_count, -c(proximity1,proximity2))
+
+### Lift ###
+
 # Calculating lift
 cooccurance_count$lift <- (cooccurance_count$co_occurance_count*cooccurance_count$total_num_obs)/(cooccurance_count$tag1_count*cooccurance_count$tag2_count)
 
 # keep only connections with lift > 1
-cooccurance_count <- cooccurance_count %>% filter(lift > 1)
+#cooccurance_count <- cooccurance_count %>% filter(lift > 1)
 
 # removing the duplicates in edge list (because we will build an undirected network)
 no_duplicates <- cooccurance_count[!duplicated(t(apply(cooccurance_count, 1, sort))),]
@@ -148,6 +161,6 @@ data_check <- c(no_duplicates$tag1, no_duplicates$tag2)
 length(unique(data_check)) == length(unique(df_matrix$tags))
 
 # Export data to .csv for upload to Github and use to build the technology space network
-write.csv(no_duplicates,"/Users/oleteutloff/Desktop/Data/edge_list.csv", row.names = FALSE)
+write.csv(no_duplicates,"/Users/oleteutloff/Desktop/Data/edge_list_full.csv", row.names = FALSE)
 
 
