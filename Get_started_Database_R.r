@@ -21,3 +21,10 @@ SO_data = mongo(db="stackoverflow", collection="country_tags_2018", url=connecti
 data <- SO_data$find(fields = '{"Country": true, "tags" : true, "count" : true}')
 
 
+# Raw Data
+SO_raw = mongo(db="stackoverflow", collection="stackoverflow", url=connection_string)
+
+data <- SO_raw$find(fields = '{"Country": true, "tags" : true, "creation_date" : true, "owner_user_id":true}')
+
+
+
