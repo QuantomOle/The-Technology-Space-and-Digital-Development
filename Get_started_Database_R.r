@@ -1,5 +1,5 @@
 #%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%
-# Tutrial of how to get started with data on MongoDB #
+# Tutorial of how to get started with data on MongoDB #
 # 27-06-2022 | Ole Teutloff
 #%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%
 #%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%
@@ -11,6 +11,7 @@ library(tidyverse)
 readRenviron(".env")
 connection_string = Sys.getenv("CONNECTION_STRING")
 
+connection_string
 # Create connection to database
 SO_data = mongo(db="stackoverflow", collection="country_tags_2018", url=connection_string)
 
